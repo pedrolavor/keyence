@@ -1,5 +1,22 @@
-package keyence;
-//package gda.device.scannable.keyence;
+package br.inf.cs.keyence;
+
+import java.awt.image.BufferedImage;
+import java.io.ByteArrayInputStream;
+import java.io.File;
+import java.io.IOException;
+import java.net.ConnectException;
+import java.net.InetSocketAddress;
+import java.net.SocketTimeoutException;
+import java.net.UnknownHostException;
+import java.nio.ByteBuffer;
+import java.nio.CharBuffer;
+import java.nio.channels.SocketChannel;
+import java.nio.charset.Charset;
+import java.nio.charset.CharsetDecoder;
+import java.nio.charset.CharsetEncoder;
+import java.util.ArrayList;
+import javax.imageio.ImageIO;
+
 
 /*-
  * Copyright © 2009 Diamond Light Source Ltd.
@@ -19,34 +36,6 @@ package keyence;
  * with GDA. If not, see <http://www.gnu.org/licenses/>.
  */
 
-import java.awt.image.BufferedImage;
-import java.io.ByteArrayInputStream;
-import java.io.File;
-import java.io.IOException;
-import java.net.ConnectException;
-import java.net.InetSocketAddress;
-import java.net.SocketTimeoutException;
-import java.net.UnknownHostException;
-import java.nio.ByteBuffer;
-import java.nio.CharBuffer;
-import java.nio.channels.SocketChannel;
-import java.nio.charset.Charset;
-import java.nio.charset.CharsetDecoder;
-import java.nio.charset.CharsetEncoder;
-import java.text.SimpleDateFormat;
-import java.util.ArrayList;
-import java.util.Date;
-
-import javax.imageio.ImageIO;
-
-//import org.slf4j.Logger;
-//import org.slf4j.LoggerFactory;
-//import org.springframework.util.StringUtils;
-//
-//import gda.data.PathConstructor;
-//import gda.device.DeviceException;
-//import gda.device.scannable.ScannableBase;
-//import gda.factory.FactoryException;
 
 /**
  * Provides Ethernet communications a Keyence Camera Controller
@@ -59,16 +48,16 @@ public class Keyence {
 
 	private String host = "localhost";
 	private int commandPort = 8500;
-	private int socketTimeOut = 2000;
+	private int socketTimeOut = 5000;
 
 	private ArrayList<String> startupCommands = new ArrayList<String>();
 
     private static Charset charset = Charset.forName("US-ASCII");
     private static CharsetEncoder encoder = charset.newEncoder();
     private static CharsetDecoder decoder = charset.newDecoder();
+    
 
-	// private SimpleDateFormat dateFormat = new SimpleDateFormat("yyyyMMdd-HH:mm:ss");
-	private SimpleDateFormat dateFormat = new SimpleDateFormat("dd/MM/yyyy-HH:mm:ss");
+//	private SimpleDateFormat dateFormat = new SimpleDateFormat("dd/MM/yyyy-HH:mm:ss");
 
 	private String imageFormat = "png";
 
@@ -78,7 +67,38 @@ public class Keyence {
 	private ByteBuffer bb = ByteBuffer.allocate(4096);
 	private SocketChannel socketChannel;
 	private boolean connected = false;
+	
+	private String name;
+	private boolean configured = false;
 
+	/**
+	 * Set the configured state of the object
+	 * <p>
+	 * Subclasses will typically call this function with parameter <code>true</code> at the end of their implementation
+	 * of {@link #configure()}, and with <code>false</code> when closing the connection to a device and/or when starting
+	 * to reconfigure it.
+	 *
+	 * @param configured
+	 *            The configured state of the object (see comment above).
+	 */
+	protected void setConfigured(boolean configured) {
+		this.configured = configured;
+	}
+
+	public boolean isConfigured() {
+		return configured;
+	}
+	
+	public void setName(String name) {
+		this.name = name;
+	}
+	
+	public String getName() {
+		if (isConfigured() && (name == null || name.isEmpty())){
+			System.out.println("getName() called on a device when the name has not been set. This may cause problems in the system and should be fixed.");
+		}
+		return name + "(" + host + ":" + commandPort + ")";
+	}
 
 	/**
 	 * Run connect to configure.
@@ -94,7 +114,7 @@ public class Keyence {
 			
 		//} catch (DeviceException e) {
 		} catch (Exception e) {
-			throw new Exception("Error connecting to Keyence device",e);
+			throw new Exception("Error connecting to Keyence device", e);
 		}
 		new Thread(this::runKeyence, getName() + " buffer emptier").start();
 		setConfigured(true);
@@ -120,18 +140,18 @@ public class Keyence {
 					doStartupScript();
 
 					connected = true;
+					System.out.println("Connected successfuly!");
 				}
 			}
 		} catch (UnknownHostException ex) {
 			// this could be fatal as reconnect attempts are futile.
-			//logger.error(getName() + ": connect: " + ex.getMessage());
 			System.out.println(getName() + ": connect: " + ex.getMessage());
 		} catch (ConnectException ex) {
-			//logger.debug(getName() + ": connect: " + ex.getMessage());
 			System.out.println(getName() + ": connect: " + ex.getMessage());
 		} catch (IOException ix) {
-			//logger.error(getName() + ": connect: " + ix.getMessage());
 			System.out.println(getName() + ": connect: " + ix.getMessage());
+		} finally {
+			System.out.println("Please, verify if other device is already connected to " + getName());
 		}
 	}
 
@@ -143,10 +163,7 @@ public class Keyence {
 	public void reconfigure() throws Exception {
 		try {
 			reconnect();
-			
-		//} catch (DeviceException e) {
 		} catch (Exception e) {
-			//throw new FactoryException("Error reconfiguring keyence device",e);
 			throw new Exception("Error reconfiguring keyence device",e);
 		}
 	}
@@ -177,7 +194,6 @@ public class Keyence {
 					socketChannel.close();
 					socketChannel = null;
 				} catch (IOException ex) {
-					//throw new DeviceException(ex.getMessage(),ex);
 					throw new Exception(ex.getMessage(),ex);
 				}
 			}
@@ -205,11 +221,9 @@ public class Keyence {
 	public String processCommand(String msg) throws Exception {
 		String command = msg + '\r';
 		String reply = null;
-		//logger.debug(getName() + ": sent command: |" + msg + "|");
 		System.out.println(getName() + ": sent command: |" + msg + "|");
 		synchronized (socketAccessLock) {
 			if (!isConnected()) {
-				//throw new DeviceException("not connected");
 				throw new Exception("not connected");
 			}
 			try{
@@ -219,24 +233,23 @@ public class Keyence {
 				socketChannel.read(bb);
 				bb.flip();
 				reply = decoder.decode(bb).toString();
-				//logger.debug(getName() + ": got reply: |" + reply.trim() + "|");
 				System.out.println(getName() + ": got reply: |" + reply.trim() + "|");
 			} catch (SocketTimeoutException ex) {
-				//throw new DeviceException("sendCommand read timeout " + ex.getMessage(),ex);
 				throw new Exception("sendCommand read timeout " + ex.getMessage(),ex);
 			} catch (IOException ex) {
 				connected = false;
-				throw new DeviceException("sendCommand: " + ex.getMessage(),ex);
+				throw new Exception("sendCommand: " + ex.getMessage(),ex);
 			}
 		}
 		return reply;
 	}
 
 	private String writeImage(BufferedImage image) throws IOException {
-		String fileName = PathConstructor.createFromDefaultProperty()+"/"+getName()+"-"+dateFormat.format(new Date())+"."+imageFormat;
-		File imageFile = new File(fileName );
-		ImageIO.write(image, imageFormat, imageFile);
-		return fileName;
+//		String fileName = PathConstructor.createFromDefaultProperty()+"/"+getName()+"-"+dateFormat.format(new Date())+"."+imageFormat;
+//		File imageFile = new File(fileName );
+//		ImageIO.write(image, imageFormat, imageFile);
+//		return fileName;
+		return null;
 	}
 	/**
 	 *
@@ -244,7 +257,7 @@ public class Keyence {
 	 * @throws IOException
 	 * @throws DeviceException
 	 */
-	public String saveLastMeasurementImage() throws IOException, DeviceException {
+	public String saveLastMeasurementImage() throws IOException, Exception {
 		return writeImage(getLastMeasurementImage());
 	}
 	/**
@@ -253,7 +266,7 @@ public class Keyence {
 	 * @throws DeviceException
 	 * @throws IOException
 	 */
-	public BufferedImage getLastMeasurementImage() throws DeviceException, IOException {
+	public BufferedImage getLastMeasurementImage() throws IOException, Exception {
 		byte[] image = (byte[]) processImageRequest("BR,CM,1,0,NW", 5)[5];
 		return ImageIO.read(new ByteArrayInputStream(image));
 	}
@@ -264,7 +277,7 @@ public class Keyence {
 	 * @throws IOException
 	 * @throws DeviceException
 	 */
-	public void saveScreenShot(String fileName) throws IOException, DeviceException {
+	public void saveScreenShot(String fileName) throws IOException, Exception {
 		File imageFile = new File(fileName );
 		ImageIO.write(getScreenShot(), imageFormat, imageFile);
 	}
@@ -275,7 +288,7 @@ public class Keyence {
 	 * @throws IOException
 	 * @throws DeviceException
 	 */
-	public String saveScreenShot() throws IOException, DeviceException {
+	public String saveScreenShot() throws IOException, Exception {
 		return writeImage(getScreenShot());
 
 	}
@@ -285,7 +298,7 @@ public class Keyence {
 	 * @throws DeviceException
 	 * @throws IOException
 	 */
-	public BufferedImage getScreenShot() throws DeviceException, IOException {
+	public BufferedImage getScreenShot() throws IOException, Exception {
 		byte[] image = (byte[]) processImageRequest("BC,CM", 2)[2];
 		return ImageIO.read(new ByteArrayInputStream(image));
 	}
@@ -298,15 +311,15 @@ public class Keyence {
 	 * @return the reply string.
 	 * @throws DeviceException
 	 */
-	public Object[] processImageRequest(String msg, int expectedReplyItems) throws DeviceException {
+	public Object[] processImageRequest(String msg, int expectedReplyItems) throws Exception {
 		if (expectedReplyItems < 2) throw new IllegalArgumentException("need at least two values for images (length definition and data)");
 		String command = msg + '\r';
 		Object reply[] = new Object[expectedReplyItems+1];
-		logger.debug(getName() + ": sent command: " + msg);
+		System.out.println(getName() + ": sent command: " + msg);
 		synchronized (socketAccessLock) {
 			try{
 				if (!isConnected()) {
-					throw new DeviceException("not connected");
+					throw new Exception("not connected");
 				}
 				cleanPipe();
 				socketChannel.write(encoder.encode(CharBuffer.wrap(command)));
@@ -323,13 +336,13 @@ public class Keyence {
 						socketChannel.read(singleByte);
 					singleByte.flip();
 					String c = decoder.decode(singleByte).toString();
-					logger.debug(c.toString());
+					System.out.println(c.toString());
 					if (c.equals(",")) {
 						reply[argCounter] = sb.toString();
 						sb = new StringBuilder();
 						argCounter++;
 					} else if (c.equals("\r")) {
-						throw new DeviceException("sendCommand: not enough data for image received - suspect an error");
+						throw new Exception("sendCommand: not enough data for image received - suspect an error");
 					} else {
 						sb.append(c);
 					}
@@ -346,21 +359,21 @@ public class Keyence {
 
 				reply[expectedReplyItems] = imageData;
 			} catch (SocketTimeoutException ex) {
-				throw new DeviceException("sendCommand read timeout " + ex.getMessage(),ex);
+				throw new Exception("sendCommand read timeout " + ex.getMessage(),ex);
 			} catch (IOException ex) {
 				// treat as fatal
 				connected = false;
-				throw new DeviceException("sendCommand: " + ex.getMessage(),ex);
+				throw new Exception("sendCommand: " + ex.getMessage(),ex);
 			}
 		}
 		return reply;
 	}
 
-	private void doStartupScript() throws DeviceException {
+	private void doStartupScript() throws Exception {
 		for (String command : startupCommands) {
 			String reply = processCommand(command);
 			if (reply.startsWith("ER")) {
-				logger.error("error sending command " + command + " received error reply from device: " + reply);
+				System.out.println("error sending command " + command + " received error reply from device: " + reply);
 			}
 		}
 	}
@@ -411,17 +424,17 @@ public class Keyence {
 		return startupCommands;
 	}
 
-	@Override
-	public double[] getPosition() throws DeviceException {
+
+	public double[] getPosition() throws Exception {
 
 		String reply = processCommand("T1");
 		String[] posStrings = reply.split(",");
 		if (!"T1".equals(posStrings[0])) {
-			throw new DeviceException("communication or measurement error (device not in run mode?): " + StringUtils.quote(reply));
+			throw new Exception("communication or measurement error (device not in run mode?): \"" + reply + "\"");
 		}
 
 		int positionsRead = posStrings.length-1;
-		if (extraNames.length>0 && extraNames.length != positionsRead) throw new DeviceException("unexpected number of measurements, are we running the right program? expected <"+extraNames.length+"> got <"+positionsRead+">. Reply was " + StringUtils.quote(reply.replace("\n", "\\n").replace("\r", "\\r")));
+//		if (extraNames.length>0 && extraNames.length != positionsRead) throw new Exception("unexpected number of measurements, are we running the right program? expected <"+extraNames.length+"> got <"+positionsRead+">. Reply was \"" + (reply.replace("\n", "\\n").replace("\r", "\\r")) + "\"");
 
 		double[] positions = new double[positionsRead];
 		for (int i = 1; i < posStrings.length; i++) {
@@ -430,12 +443,12 @@ public class Keyence {
 		return positions;
 	}
 
-	@Override
-	public void asynchronousMoveTo(Object position) throws DeviceException {
+
+	public void asynchronousMoveTo(Object position) throws Exception {
 	}
 
-	@Override
-	public boolean isBusy() throws DeviceException {
+
+	public boolean isBusy() throws Exception {
 		return false;
 	}
 
@@ -451,7 +464,7 @@ public class Keyence {
 				} catch (IOException ex) {
 					try {
 						close();
-					} catch (DeviceException e) {
+					} catch (Exception e) {
 						// we know that already
 					}
 					throw ex;
@@ -464,7 +477,8 @@ public class Keyence {
 		try {
 			runKeyenceLoop();
 		} catch (InterruptedException e) {
-			logger.error("Thread interrupted while running Keyence {}", getName(), e);
+			System.out.println("Thread interrupted while running Keyence {}" + getName());
+			e.printStackTrace();
 			Thread.currentThread().interrupt();
 		}
 	}
@@ -481,7 +495,7 @@ public class Keyence {
 			if (isConfigured() && !isConnected()) {
 				try {
 					reconnect();
-				} catch (DeviceException e) {
+				} catch (Exception e) {
 					// TODO Auto-generated catch block
 					e.printStackTrace();
 				}
