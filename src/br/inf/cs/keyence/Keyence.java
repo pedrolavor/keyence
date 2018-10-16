@@ -4,6 +4,7 @@ import java.awt.image.BufferedImage;
 import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
 import java.net.ConnectException;
 import java.net.InetSocketAddress;
 import java.net.SocketTimeoutException;
@@ -15,6 +16,7 @@ import java.nio.charset.Charset;
 import java.nio.charset.CharsetDecoder;
 import java.nio.charset.CharsetEncoder;
 import java.util.ArrayList;
+
 import javax.imageio.ImageIO;
 
 
@@ -47,77 +49,34 @@ import javax.imageio.ImageIO;
 public class Keyence {
 
 	private String host = "localhost";
-	private int commandPort = 8500;
-	private int socketTimeOut = 5000;
-
+	private int port = 9004;
+	private int socketTimeout = 5000;
+	private String name = "KEYENCE";
+	private boolean connected = false;
+	private String imageFormat = "png";
 	private ArrayList<String> startupCommands = new ArrayList<String>();
-
+	private ByteBuffer bb = ByteBuffer.allocate(4096);
     private static Charset charset = Charset.forName("US-ASCII");
     private static CharsetEncoder encoder = charset.newEncoder();
     private static CharsetDecoder decoder = charset.newDecoder();
-    
-
-//	private SimpleDateFormat dateFormat = new SimpleDateFormat("dd/MM/yyyy-HH:mm:ss");
-
-	private String imageFormat = "png";
-
-	//Object used to grant a thread exclusive access to the socket, bb and connected
-	private final Object socketAccessLock= new Object();
-
-	private ByteBuffer bb = ByteBuffer.allocate(4096);
+    private final Object socketAccessLock = new Object(); // Object used to grant a thread exclusive access to the socket, bb and connected
 	private SocketChannel socketChannel;
-	private boolean connected = false;
 	
-	private String name;
-	private boolean configured = false;
-
-	/**
-	 * Set the configured state of the object
-	 * <p>
-	 * Subclasses will typically call this function with parameter <code>true</code> at the end of their implementation
-	 * of {@link #configure()}, and with <code>false</code> when closing the connection to a device and/or when starting
-	 * to reconfigure it.
-	 *
-	 * @param configured
-	 *            The configured state of the object (see comment above).
-	 */
-	protected void setConfigured(boolean configured) {
-		this.configured = configured;
-	}
-
-	public boolean isConfigured() {
-		return configured;
+	
+	// CONSTRUTORES
+	public Keyence() {}
+	
+	public Keyence(String host) {
+		this.host = host;
 	}
 	
-	public void setName(String name) {
-		this.name = name;
+	public Keyence(int port) {
+		this.port = port;
 	}
 	
-	public String getName() {
-		if (isConfigured() && (name == null || name.isEmpty())){
-			System.out.println("getName() called on a device when the name has not been set. This may cause problems in the system and should be fixed.");
-		}
-		return name + "(" + host + ":" + commandPort + ")";
-	}
-
-	/**
-	 * Run connect to configure.
-	 * @throws FactoryException
-	 */
-	public void configure() throws Exception {
-		if (isConfigured()) {
-			return;
-		}
-		
-		try {
-			connect();
-			
-		//} catch (DeviceException e) {
-		} catch (Exception e) {
-			throw new Exception("Error connecting to Keyence device", e);
-		}
-		new Thread(this::runKeyence, getName() + " buffer emptier").start();
-		setConfigured(true);
+	public Keyence(String host, int port) {
+		this.host = host;
+		this.port = port;
 	}
 
 	/**
@@ -126,21 +85,20 @@ public class Keyence {
 	 */
 	public void connect() throws Exception {
 		try {
-			synchronized (socketAccessLock) {
+			synchronized (this.socketAccessLock) {
 				if (!isConnected()){
-					InetSocketAddress inetAddr = new InetSocketAddress(host, commandPort);
-					socketChannel = SocketChannel.open();
-					socketChannel.connect(inetAddr);
+					InetSocketAddress inetAddr = new InetSocketAddress(this.host, this.port);
+					this.socketChannel = SocketChannel.open();
+					this.socketChannel.connect(inetAddr);
+					this.socketChannel.socket().setSoTimeout(this.socketTimeout);
+					this.socketChannel.configureBlocking(true);
+					this.socketChannel.finishConnect();
+					this.connected = true;
+					
+					System.out.println("Connection stablished!");
 
-					socketChannel.socket().setSoTimeout(socketTimeOut);
-					socketChannel.configureBlocking(true);
-					socketChannel.finishConnect();
-
-					cleanPipe();
-					doStartupScript();
-
-					connected = true;
-					System.out.println("Connected successfuly!");
+					this.cleanPipe();
+					this.doStartupScript();
 				}
 			}
 		} catch (UnknownHostException ex) {
@@ -148,23 +106,9 @@ public class Keyence {
 			System.out.println(getName() + ": connect: " + ex.getMessage());
 		} catch (ConnectException ex) {
 			System.out.println(getName() + ": connect: " + ex.getMessage());
+			System.out.println("Please, verify if other device is already connected to " + getName());
 		} catch (IOException ix) {
 			System.out.println(getName() + ": connect: " + ix.getMessage());
-		} finally {
-			System.out.println("Please, verify if other device is already connected to " + getName());
-		}
-	}
-
-
-	/**
-	 * Reconfiguration method.
-	 * @throws FactoryException
-	 */
-	public void reconfigure() throws Exception {
-		try {
-			reconnect();
-		} catch (Exception e) {
-			throw new Exception("Error reconfiguring keyence device",e);
 		}
 	}
 
@@ -175,15 +119,15 @@ public class Keyence {
 	 */
 	public synchronized void reconnect() throws Exception {
 		try {
-			close();
-		} catch (Exception e) {
-			// do nothing for now
+			this.close();
+		} catch (Exception ex) {
+			System.out.println(this.getName() + ": reconnect: " + ex.getMessage());
 		}
-		connect();
+		this.connect();
 	}
 
 	/**
-	 * Reconfiguration method.
+	 * Close method.
 	 * @throws DeviceException
 	 */
 	public void close() throws Exception {
@@ -193,22 +137,13 @@ public class Keyence {
 				try {
 					socketChannel.close();
 					socketChannel = null;
+					System.out.println("Connection closed!");
 				} catch (IOException ex) {
-					throw new Exception(ex.getMessage(),ex);
+					throw new Exception(ex.getMessage(), ex);
 				}
 			}
 		}
 	}
-
-	/**
-	 * Returns the state of the socket connection
-	 *
-	 * @return true if connected
-	 */
-	public boolean isConnected() {
-		return connected;
-	}
-
 
 	/**
 	 * Send command to the server.
@@ -221,28 +156,157 @@ public class Keyence {
 	public String processCommand(String msg) throws Exception {
 		String command = msg + '\r';
 		String reply = null;
-		System.out.println(getName() + ": sent command: |" + msg + "|");
-		synchronized (socketAccessLock) {
-			if (!isConnected()) {
-				throw new Exception("not connected");
+		System.out.println(this.getName() + ": sent command: |" + msg + "|");
+		synchronized (this.socketAccessLock) {
+			if (!this.isConnected()) {
+				throw new Exception("Not connected to device!");
 			}
 			try{
-				cleanPipe();
-				socketChannel.write(encoder.encode(CharBuffer.wrap(command)));
-				bb.clear();
-				socketChannel.read(bb);
-				bb.flip();
-				reply = decoder.decode(bb).toString();
-				System.out.println(getName() + ": got reply: |" + reply.trim() + "|");
+				this.cleanPipe();
+				this.socketChannel.write(encoder.encode(CharBuffer.wrap(command)));
+				this.bb.clear();
+				this.socketChannel.read(this.bb);
+				this.bb.flip();
+				reply = decoder.decode(this.bb).toString();
+				System.out.println(this.getName() + ": got reply: |" + reply.trim() + "|");				
 			} catch (SocketTimeoutException ex) {
-				throw new Exception("sendCommand read timeout " + ex.getMessage(),ex);
+				throw new Exception("SendCommand read timeout " + ex.getMessage(), ex);
 			} catch (IOException ex) {
 				connected = false;
-				throw new Exception("sendCommand: " + ex.getMessage(),ex);
+				throw new Exception("SendCommand: " + ex.getMessage(), ex);
 			}
 		}
 		return reply;
 	}
+
+
+	/**
+	 * Listen to the socket inputStream.
+	 */
+	public InputStream listenStream() throws Exception {
+		InputStream is = null;
+		synchronized (this.socketAccessLock) {
+			if (!this.isConnected()) {
+				throw new Exception("Not connected to device!");
+			}
+			try{
+				is = this.socketChannel.socket().getInputStream();
+			} catch (IOException ex) {
+				throw new Exception("SendCommand: " + ex.getMessage(), ex);
+			}
+		}
+		return is;
+	}
+
+	private void doStartupScript() throws Exception {
+		for (String command : startupCommands) {
+			String reply = processCommand(command);
+			if (reply.startsWith("ER")) {
+				System.out.println("error sending command " + command + " received error reply from device: " + reply);
+			} else {
+				System.out.println("\" " + command + "\" successfuly replied: " + reply);
+			}
+		}
+	}
+
+	private void cleanPipe() throws IOException {
+		synchronized (socketAccessLock) {
+			if(isConnected()){
+				try{
+					socketChannel.configureBlocking(false);
+					while (socketChannel.read(bb) > 0) {
+						bb.clear();
+					}
+					socketChannel.configureBlocking(true);
+				} catch (IOException ex) {
+					try {
+						close();
+					} catch (Exception e) {
+						// we know that already
+					}
+					throw ex;
+				}
+			}
+		}
+	}
+	
+	/**
+	 * Returns the state of the socket connection
+	 *
+	 * @return true if connected
+	 */
+	public boolean isConnected() {
+		return connected;
+	}
+	
+	/**
+	 * Set the keyence name
+	 *
+	 * @param name
+	 */
+	public void setName(String name) {
+		this.name = name;
+	}
+
+	/**
+	 * @return the keyence name
+	 */
+	public String getName() {
+		return this.name + "(" + this.host + ":" + this.port + ")";
+	}
+	
+	/**
+	 * Set the keyence host
+	 *
+	 * @param host
+	 */
+	public void setHost(String host) {
+		this.host = host;
+	}
+
+	/**
+	 * @return the keyence host name
+	 */
+	public String getHost() {
+		return this.host;
+	}
+
+	/**
+	 * Set the command port
+	 *
+	 * @param port
+	 */
+	public void setPort(int port) {
+		this.port = port;
+	}
+
+	/**
+	 * @return the command port
+	 */
+	public int getPort() {
+		return this.port;
+	}
+
+	/**
+	 * @param startupCommands
+	 */
+	public void setStartupCommands(ArrayList<String> startupCommands) {
+		this.startupCommands = startupCommands;
+	}
+
+	/**
+	 * @return an array list of startup commands to be processed by da.server on startup
+	 */
+	public ArrayList<String> getStartupCommands() {
+		return startupCommands;
+	}
+
+	
+	
+	
+	/***********************
+	 * CODIGO NAO UTILIZADO
+	 ***********************/
 
 	private String writeImage(BufferedImage image) throws IOException {
 //		String fileName = PathConstructor.createFromDefaultProperty()+"/"+getName()+"-"+dateFormat.format(new Date())+"."+imageFormat;
@@ -251,6 +315,7 @@ public class Keyence {
 //		return fileName;
 		return null;
 	}
+	
 	/**
 	 *
 	 * @return the filename
@@ -260,6 +325,7 @@ public class Keyence {
 	public String saveLastMeasurementImage() throws IOException, Exception {
 		return writeImage(getLastMeasurementImage());
 	}
+	
 	/**
 	 *
 	 * @return the camera shot of the last measurement
@@ -270,7 +336,6 @@ public class Keyence {
 		byte[] image = (byte[]) processImageRequest("BR,CM,1,0,NW", 5)[5];
 		return ImageIO.read(new ByteArrayInputStream(image));
 	}
-
 
 	/**
 	 *
@@ -292,6 +357,7 @@ public class Keyence {
 		return writeImage(getScreenShot());
 
 	}
+	
 	/**
 	 *
 	 * @return a screenshot
@@ -302,6 +368,7 @@ public class Keyence {
 		byte[] image = (byte[]) processImageRequest("BC,CM", 2)[2];
 		return ImageIO.read(new ByteArrayInputStream(image));
 	}
+	
 	/**
 	 * Send command to the server.
 	 *
@@ -330,7 +397,7 @@ public class Keyence {
 				int argCounter = 0;
 				while(argCounter < expectedReplyItems) {
 					singleByte.clear();
-					socketChannel.socket().setSoTimeout(socketTimeOut);
+					socketChannel.socket().setSoTimeout(this.socketTimeout);
 					socketChannel.configureBlocking(true);
 					while (singleByte.position() == 0)
 						socketChannel.read(singleByte);
@@ -369,62 +436,6 @@ public class Keyence {
 		return reply;
 	}
 
-	private void doStartupScript() throws Exception {
-		for (String command : startupCommands) {
-			String reply = processCommand(command);
-			if (reply.startsWith("ER")) {
-				System.out.println("error sending command " + command + " received error reply from device: " + reply);
-			}
-		}
-	}
-
-	/**
-	 * Set the keyence host
-	 *
-	 * @param host
-	 */
-	public void setHost(String host) {
-		this.host = host;
-	}
-
-	/**
-	 * @return the keyence host name
-	 */
-	public String getHost() {
-		return host;
-	}
-
-	/**
-	 * Set the command port
-	 *
-	 * @param port
-	 */
-	public void setPort(int port) {
-		this.commandPort = port;
-	}
-
-	/**
-	 * @return the command port
-	 */
-	public int getPort() {
-		return commandPort;
-	}
-
-	/**
-	 * @param startupCommands
-	 */
-	public void setStartupCommands(ArrayList<String> startupCommands) {
-		this.startupCommands = startupCommands;
-	}
-
-	/**
-	 * @return an array list of startup commands to be processed by da.server on startup
-	 */
-	public ArrayList<String> getStartupCommands() {
-		return startupCommands;
-	}
-
-
 	public double[] getPosition() throws Exception {
 
 		String reply = processCommand("T1");
@@ -443,34 +454,11 @@ public class Keyence {
 		return positions;
 	}
 
-
 	public void asynchronousMoveTo(Object position) throws Exception {
 	}
 
-
 	public boolean isBusy() throws Exception {
 		return false;
-	}
-
-	private void cleanPipe() throws IOException {
-		synchronized (socketAccessLock) {
-			if(isConnected()){
-				try{
-					socketChannel.configureBlocking(false);
-					while (socketChannel.read(bb) > 0) {
-						bb.clear();
-					}
-					socketChannel.configureBlocking(true);
-				} catch (IOException ex) {
-					try {
-						close();
-					} catch (Exception e) {
-						// we know that already
-					}
-					throw ex;
-				}
-			}
-		}
 	}
 
 	private void runKeyence() {
@@ -492,7 +480,7 @@ public class Keyence {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
 			}
-			if (isConfigured() && !isConnected()) {
+			if (!isConnected()) {
 				try {
 					reconnect();
 				} catch (Exception e) {
