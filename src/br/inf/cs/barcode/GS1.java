@@ -20,22 +20,22 @@ public class GS1 {
 		sb.append(this.getExpirationDate());
 		sb.append(ASCII.GS);
 		sb.append(this.getLot());
-		
+
 		System.out.println(sb.toString());
 		return sb.toString();
 	}
 
-	public void decode( String encoded) {
+	public void decode(String encoded) throws NumberFormatException {
 		String[] fields = encoded.split(Character.toString(ASCII.GS));
-		
-		if(fields.length == 5) {
+
+		if (fields.length == 5) {
 			this.setGTIN(Long.valueOf(fields[0]));
 			this.setNHRN(Long.valueOf(fields[1]));
 			this.setSN(fields[2]);
 			this.setExpirationDate(Integer.valueOf(fields[3]));
 			this.setLot(fields[4]);
-			
-		}else {
+
+		} else {
 			throw new IllegalArgumentException("O número de parametros recebidos é maior que o permitido.");
 		}
 	}
@@ -45,18 +45,26 @@ public class GS1 {
 		gs1.setGTIN(7898157722141L);
 		gs1.setNHRN(10369460061L);
 		gs1.setSN("0");
-		gs1.setExpirationDate(001020);
+		gs1.setExpirationDate(201219);
 		gs1.setLot("C18006");
 
-		gs1.decode(gs1.encode());
 		
-		System.out.println(gs1.getGTIN());
-		System.out.println(gs1.getNHRN());
-		System.out.println(gs1.getSN());
-		System.out.println(gs1.getExpirationDate());
-		System.out.println(gs1.getLot());
+		String sTest = "7898157722141103694600610201219C18006";
+		
+		try {
+			gs1.decode(gs1.encode());
+
+			System.out.println(gs1.getGTIN());
+			System.out.println(gs1.getNHRN());
+			System.out.println(gs1.getSN());
+			System.out.println(gs1.getExpirationDate());
+			System.out.println(gs1.getLot());
+		} catch (Exception e) {
+			System.out.println(e.getMessage());
+		}
+
 	}
-	
+
 	public Long getGTIN() {
 		return GTIN;
 	}
