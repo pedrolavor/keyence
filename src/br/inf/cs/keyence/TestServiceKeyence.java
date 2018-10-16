@@ -14,11 +14,12 @@ public class TestServiceKeyence {
 		scanner.setName("KEYENCE SR-1000");
 
 		try {
-			scanner.configure();
 			scanner.connect();
-//			scanner.processCommand("LON");
-//			Thread.sleep(5000);
-			scanner.processCommand("LOFF");
+			for(int i = 0; i < 10; i++) {
+				System.out.println(scanner.processCommand("LON"));
+				Thread.sleep(3000);
+			}
+			scanner.close();
 			
 		} catch (Exception e) {
 			// TODO: handle exception
