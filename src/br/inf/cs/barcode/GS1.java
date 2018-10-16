@@ -3,10 +3,10 @@ package br.inf.cs.barcode;
 import br.inf.cs.util.ASCII;
 
 public class GS1 {
-	private Long GTIN;
-	private Long NHRN;
+	private String GTIN;
+	private String NHRN;
 	private String SN;
-	private Integer ExpirationDate;
+	private String ExpirationDate;
 	private String Lot;
 
 	public String encode() {
@@ -21,7 +21,7 @@ public class GS1 {
 		sb.append(ASCII.GS);
 		sb.append(this.getLot());
 
-		System.out.println(sb.toString());
+		// System.out.println(sb.toString());
 		return sb.toString();
 	}
 
@@ -29,28 +29,38 @@ public class GS1 {
 		String[] fields = encoded.split(Character.toString(ASCII.GS));
 
 		if (fields.length == 5) {
-			this.setGTIN(Long.valueOf(fields[0]));
-			this.setNHRN(Long.valueOf(fields[1]));
+			this.setGTIN(fields[0]);
+			this.setNHRN(fields[1]);
 			this.setSN(fields[2]);
-			this.setExpirationDate(Integer.valueOf(fields[3]));
+			this.setExpirationDate(fields[3]);
 			this.setLot(fields[4]);
 
 		} else {
-			throw new IllegalArgumentException("O número de parametros recebidos é maior que o permitido.");
+			if (fields.length == 3) {
+				String s1 = fields[0];
+				String s2 = fields[1];
+				String s3 = fields[2];
+				this.setGTIN(s1.substring(3, 16));
+				this.setNHRN(s1.substring(19, (s1.length()) ));
+				this.setSN(s2.substring(2, (s2.length()) ));
+				this.setExpirationDate(s3.substring(2, 8 ));
+				this.setLot(s3.substring(10, (s3.length()) ));
+			} else {
+				throw new IllegalArgumentException("O número de parametros recebidos é maior que o permitido.");
+			}
 		}
 	}
 
 	public static void main(String[] args) {
 		GS1 gs1 = new GS1();
-		gs1.setGTIN(7898157722141L);
-		gs1.setNHRN(10369460061L);
+		gs1.setGTIN("7898157722141");
+		gs1.setNHRN("10369460061");
 		gs1.setSN("0");
-		gs1.setExpirationDate(201219);
+		gs1.setExpirationDate("201219");
 		gs1.setLot("C18006");
 
-		
 		String sTest = "7898157722141103694600610201219C18006";
-		
+
 		try {
 			gs1.decode(gs1.encode());
 
@@ -62,22 +72,21 @@ public class GS1 {
 		} catch (Exception e) {
 			System.out.println(e.getMessage());
 		}
-
 	}
 
-	public Long getGTIN() {
+	public String getGTIN() {
 		return GTIN;
 	}
 
-	public void setGTIN(Long gTIN) {
+	public void setGTIN(String gTIN) {
 		GTIN = gTIN;
 	}
 
-	public Long getNHRN() {
+	public String getNHRN() {
 		return NHRN;
 	}
 
-	public void setNHRN(Long nHRN) {
+	public void setNHRN(String nHRN) {
 		NHRN = nHRN;
 	}
 
@@ -89,11 +98,11 @@ public class GS1 {
 		SN = sN;
 	}
 
-	public Integer getExpirationDate() {
+	public String getExpirationDate() {
 		return ExpirationDate;
 	}
 
-	public void setExpirationDate(Integer expirationDate) {
+	public void setExpirationDate(String expirationDate) {
 		ExpirationDate = expirationDate;
 	}
 
