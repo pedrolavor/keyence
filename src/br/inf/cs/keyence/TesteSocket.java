@@ -1,4 +1,4 @@
-package keyence;
+package br.inf.cs.keyence;
 
 import java.io.IOException;
 import java.io.InputStream;
