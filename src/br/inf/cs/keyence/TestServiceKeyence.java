@@ -1,5 +1,7 @@
 package br.inf.cs.keyence;
 
+import br.inf.cs.keyence.Keyence;
+
 public class TestServiceKeyence {
 
 	public static void main(String[] args) {

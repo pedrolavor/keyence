@@ -21,7 +21,7 @@ import javax.imageio.ImageIO;
 
 
 /*-
- * Copyright © 2009 Diamond Light Source Ltd.
+ * Copyright ï¿½ 2009 Diamond Light Source Ltd.
  *
  * This file is part of GDA.
  *

@@ -2,6 +2,8 @@ package br.inf.cs.keyence;
 
 import java.io.InputStream;
 
+import br.inf.cs.keyence.Keyence;
+
 public class KeyenceController {
 	
 	Keyence scanner = null;
