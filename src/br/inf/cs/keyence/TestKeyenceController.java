@@ -56,7 +56,7 @@ public class TestKeyenceController {
 					InputStream is = keyence.iniciarLeitura();
 					socketStream = new Scanner(is);
 					escutarSocket = new Thread() {
-						Scanner stream = null;
+						public Scanner stream = null;
 						@Override
 						public void run() {
 							while(true) {
@@ -64,6 +64,7 @@ public class TestKeyenceController {
 							}
 						}
 					};
+//					escutarSocket.stream = socketStream;
 					escutarSocket.start();
 				} catch (Exception e) {
 					System.out.println("Houve um problema ao tentar realizar leitura!");
