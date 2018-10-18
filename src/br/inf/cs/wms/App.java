@@ -18,7 +18,7 @@ import java.util.Scanner;
 
 public class App {
 
-	public static void main(String[] args) {
+	public static void main(String[] args) throws Exception {
 		String HOST = "192.168.0.124";
 		int PORT = 9004;
 		Scanner entrada = new Scanner(System.in);
@@ -38,7 +38,7 @@ public class App {
 			keyence.conectar();
 			
 		} catch(Exception e) {
-			System.out.println("Falha de conexão com scanner!");
+			System.out.println("Falha de conexï¿½o com scanner!");
 			System.exit(0);
 		}
 		
@@ -56,7 +56,7 @@ public class App {
 					MongoCollection<Document> pedidos = database.getCollection("pedidos");
 					Document pedidoAndamento = pedidos.find(eq("status", "andamento")).first();
 					if(pedidoAndamento.isEmpty()) {
-						System.out.println("Não nenhum pedido em adamento!");
+						System.out.println("Nï¿½o nenhum pedido em adamento!");
 					} else {
 						
 						int leiturasRealizadas = 0;
@@ -66,7 +66,7 @@ public class App {
 						while(leiturasRealizadas < 5) {
 							System.out.println("+-------------------------------------------------");
 							System.out.println("| Id: " + pedidoAndamento.getObjectId("_id"));
-							System.out.println("| Data Emissão: " + pedidoAndamento.getString("emissao"));
+							System.out.println("| Data Emissï¿½o: " + pedidoAndamento.getString("emissao"));
 							System.out.println("| Cliente: " + pedidoAndamento.getString("cliente"));
 							System.out.println("| Valor: R$" + pedidoAndamento.getDouble("valor"));
 							System.out.println("| NF: " + pedidoAndamento.getBoolean("nf"));
@@ -79,7 +79,7 @@ public class App {
 								System.out.println("|    " + item.getString("descricao") + " - " + item.get("lote") + " - " + item.get("quantidade"));
 							}
 							System.out.println("+-------------------------------------------------");
-							System.out.println(keyence.scanear());
+							System.out.println(keyence.nome());
 							leiturasRealizadas++;
 						}
 						
@@ -125,7 +125,7 @@ public class App {
 				break;
 
 			default:
-				System.out.println("Comando não encontrado!");
+				System.out.println("Comando nï¿½o encontrado!");
 				System.out.println();
 				break;
 			}
@@ -137,7 +137,7 @@ public class App {
 //		if(!pedidoAndamento.isEmpty()) {
 //			System.out.println("+-------------------------------------------------");
 //			System.out.println("| Id: " + pedidoAndamento.getObjectId("_id"));
-//			System.out.println("| Data Emissão: " + pedidoAndamento.getString("emissao"));
+//			System.out.println("| Data Emissï¿½o: " + pedidoAndamento.getString("emissao"));
 //			System.out.println("| Cliente: " + pedidoAndamento.getString("cliente"));
 //			System.out.println("| Valor: R$" + pedidoAndamento.getDouble("valor"));
 //			System.out.println("| NF: " + pedidoAndamento.getBoolean("nf"));
@@ -160,7 +160,7 @@ public class App {
 	
 	public static void menu() {
 		System.out.println("+-----------------------+");
-		System.out.println("| 1 - Iniciar Expedição |");
+		System.out.println("| 1 - Iniciar Expediï¿½ï¿½o |");
 		System.out.println("| 2 - AutoFocus         |");
 		System.out.println("| 3 - Tuning            |");
 		System.out.println("| 4 - Conectar          |");

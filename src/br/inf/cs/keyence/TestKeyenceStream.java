@@ -45,9 +45,8 @@ public class TestKeyenceStream {
 			case 2:
 				Scanner stream = null;
 				try {
-					InputStream is = keyence.stream();
+					InputStream is = keyence.iniciarLeitura();
 					stream = new Scanner(is);
-					keyence.scanear();
 					while (true) {
 						System.out.println(stream.nextLine());
 					}
@@ -59,7 +58,7 @@ public class TestKeyenceStream {
 				break;
 			case 4:
 				try {
-					System.out.println(keyence.pararLeitura());
+					keyence.pararLeitura();
 				} catch (Exception e) {
 					System.out.println("Houve um problema ao tentar parar leitura!");
 					System.out.println();
@@ -67,7 +66,7 @@ public class TestKeyenceStream {
 				break;
 
 			default:
-				System.out.println("Comando não encontrado!");
+				System.out.println("Comando nï¿½o encontrado!");
 				System.out.println();
 				break;
 			}

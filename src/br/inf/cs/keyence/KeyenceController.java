@@ -1,6 +1,9 @@
 package br.inf.cs.keyence;
 
+import java.io.IOException;
 import java.io.InputStream;
+import java.net.ConnectException;
+import java.net.UnknownHostException;
 
 import br.inf.cs.keyence.Keyence;
 
@@ -12,26 +15,25 @@ public class KeyenceController {
 		this.scanner = new Keyence();
 	}
 	
-	public void conectar() throws Exception {
+	public void conectar() throws UnknownHostException, ConnectException, IOException {
 		this.scanner.connect();
 	}
 	
-	public void desconectar() throws Exception {
+	public void desconectar() throws ConnectException, IOException {
 		this.scanner.close();
 	}
 	
-	public String scanear(int bank) {
-		String resposta = null;
-		try {
-			resposta = this.scanner.processCommand("LON," + (bank < 10 ? "0" : "") + bank);
-		} catch (Exception e) {
-			System.out.println("Erro ao tentar scanear: " + e.getMessage());
-		}
-		return resposta;
+	public InputStream iniciarLeitura(int bank) throws ConnectException, IOException {
+		this.scanner.send("LON," + (bank < 10 ? "0" : "") + bank);
+		return this.scanner.getStream();
 	}
 	
-	public String scanear() {
-		return scanear(1);
+	public InputStream iniciarLeitura() throws ConnectException, IOException {
+		return iniciarLeitura(1);
+	}
+	
+	public void pararLeitura() throws ConnectException, IOException {
+		this.scanner.send("LOFF");
 	}
 	
 	public String focar() {
@@ -66,27 +68,7 @@ public class KeyenceController {
 			System.out.println("Erro ao tentar scanear: " + e.getMessage());
 		}
 		return resposta;
-	}
-	
-	public String pararLeitura() {
-		String resposta = null;
-		try {
-			resposta = this.scanner.processCommand("LOFF");
-		} catch (Exception e) {
-			System.out.println("Erro ao tentar parar leitura: " + e.getMessage());
-		}
-		return resposta;
-	}
-	
-	public InputStream stream() {
-		try {
-			return this.scanner.listenStream();
-		} catch (Exception e) {
-			return null;
-		}
-	}
-	
-	
+	}	
 	
 	
 	
@@ -95,14 +77,26 @@ public class KeyenceController {
 	
 	public boolean conectado() {
 		return this.scanner.isConnected();
-	}	
+	}
+	
+	public String nome() {
+		return this.scanner.getName();
+	}
 	
 	public void nome(String name) {
 		this.scanner.setName(name);
 	}
 	
+	public String host() {
+		return this.scanner.getHost();
+	}
+	
 	public void host(String host) {
 		this.scanner.setHost(host);
+	}
+	
+	public int porta() {
+		return this.scanner.getPort();
 	}
 	
 	public void porta(int port) {
