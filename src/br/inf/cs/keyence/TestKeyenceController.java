@@ -17,12 +17,12 @@ public class TestKeyenceController {
 		Scanner entrada = new Scanner(System.in);
 		Integer comando = 0;
 		KeyenceController keyence = new KeyenceController();
-		Thread escutarSocket = null;
+		EscutadorSocket escutarSocket = null;
 		Scanner socketStream = null;
 		keyence.host(HOST);
 		keyence.porta(PORT);
 
-		while (comando != 3) {
+		while (comando != -1) {
 			menu(keyence);
 			comando = Integer.valueOf(entrada.next());
 
@@ -30,54 +30,49 @@ public class TestKeyenceController {
 			case 1:
 				try {
 					keyence.conectar();
-					System.out.println("Conex√£o realizada com sucesso!");
+					System.out.println("Conex„o realizada com sucesso!");
 				} catch (UnknownHostException ex) {
-					System.out.println("Scanner n√£o encontrado ou host n√£o existe nesta rede!");
+					System.out.println("Scanner n„o encontrado ou host n„o existe nesta rede!");
 					System.out.println();
 				} catch (ConnectException ex) {
-					System.out.println("Falha ao tentar conectar ao scanner! Verifique se outro cliente j√° est√° conectado.");
+					System.out.println("Falha ao tentar conectar ao scanner! Verifique se outro cliente j· est· conectado.");
 					System.out.println();
 				} catch (IOException ix) {
-					System.out.println("Falha de leitura de conex√£o do scanner!");
+					System.out.println("Falha de leitura de conex„o do scanner!");
 					System.out.println();
 				}
 				break;
 			case 2:
 				try {
+					if(escutarSocket != null) escutarSocket.fechar();
 					keyence.pararLeitura();
 					keyence.desconectar();
 				} catch (Exception e) {
 					System.out.println("Houve um problema ao tentar se desconectar!");
+					e.printStackTrace();
 					System.out.println();
 				}
 				break;
 			case 3:
 				try {
+					if(escutarSocket != null) escutarSocket.fechar();
 					InputStream is = keyence.iniciarLeitura();
-					socketStream = new Scanner(is);
-					escutarSocket = new Thread() {
-						public Scanner stream = null;
-						@Override
-						public void run() {
-							while(true) {
-								System.out.println(stream.nextLine());
-							}
-						}
-					};
-//					escutarSocket.stream = socketStream;
+					escutarSocket = new EscutadorSocket(is);
 					escutarSocket.start();
 				} catch (Exception e) {
 					System.out.println("Houve um problema ao tentar realizar leitura!");
+					e.printStackTrace();
 					System.out.println();
 				}
 				break;
 			case 4:
+				System.out.println("Parando leitura...");
 				try {
-					if(socketStream != null) socketStream.close();
-					if(escutarSocket != null) escutarSocket.destroy();
+					if(escutarSocket != null) escutarSocket.fechar();
 					keyence.pararLeitura();
 				} catch (Exception e) {
-					System.out.println("Houve um problema ao tentar realizar leitura!");
+					System.out.println("Houve um problema ao tentar parar leitura!");
+					e.printStackTrace();
 					System.out.println();
 				}
 				break;
@@ -86,6 +81,7 @@ public class TestKeyenceController {
 					System.out.println(keyence.focar());
 				} catch (Exception e) {
 					System.out.println("Houve um problema ao tentar focar o scanner!");
+					e.printStackTrace();
 					System.out.println();
 				}
 				break;
@@ -94,22 +90,25 @@ public class TestKeyenceController {
 					System.out.println(keyence.tunar());
 				} catch (Exception e) {
 					System.out.println("Houve um problema ao tentar realizar o tuning!");
+					e.printStackTrace();
 					System.out.println();
 				}
 				break;
 			case 7:
 				try {
+					if(escutarSocket != null) escutarSocket.fechar();
 					keyence.pararLeitura();
 					keyence.desconectar();
 					System.exit(0);
 				} catch (Exception e) {
 					System.out.println("Houve um problema ao tentar sair do programa! Error: " + e.getMessage());
+					e.printStackTrace();
 					System.out.println();
 				}
 				break;
 
 			default:
-				System.out.println("Comando nÔøΩo encontrado!");
+				System.out.println("Comando n„o encontrado!");
 				System.out.println();
 				break;
 			}
@@ -129,5 +128,32 @@ public class TestKeyenceController {
 		System.out.println("| 7 - Sair            |");
 		System.out.println("+---------------------+");
 		System.out.println();
+	}
+}
+
+class EscutadorSocket extends Thread {
+	InputStream stream;
+	Scanner scanner;
+	boolean aberto;
+	
+	public EscutadorSocket(InputStream stream) {
+		this.stream = stream;
+		aberto = true;
+	}
+	
+	public void fechar() {
+		this.aberto = false;
+	}
+	
+	@Override
+	public void run() {
+		scanner = new Scanner(this.stream);
+		
+		while(this.aberto) {
+			String s = scanner.nextLine();
+			if(this.aberto) System.out.println(s);
+		}
+
+		System.out.println("Escutador finalizado!");
 	}
 }
