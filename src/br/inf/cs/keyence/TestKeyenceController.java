@@ -35,7 +35,8 @@ public class TestKeyenceController {
 					System.out.println("Scanner não encontrado ou host não existe nesta rede!");
 					System.out.println();
 				} catch (ConnectException ex) {
-					System.out.println("Falha ao tentar conectar ao scanner! Verifique se outro cliente já está conectado.");
+					System.out.println(
+							"Falha ao tentar conectar ao scanner! Verifique se outro cliente já está conectado.");
 					System.out.println();
 				} catch (IOException ix) {
 					System.out.println("Falha de leitura de conexão do scanner!");
@@ -44,7 +45,8 @@ public class TestKeyenceController {
 				break;
 			case 2:
 				try {
-					if(escutarSocket != null) escutarSocket.fechar();
+					if (escutarSocket != null)
+						escutarSocket.fechar();
 					keyence.pararLeitura();
 					keyence.desconectar();
 				} catch (Exception e) {
@@ -55,7 +57,8 @@ public class TestKeyenceController {
 				break;
 			case 3:
 				try {
-					if(escutarSocket != null) escutarSocket.fechar();
+					if (escutarSocket != null)
+						escutarSocket.fechar();
 					InputStream is = keyence.iniciarLeitura();
 					escutarSocket = new EscutadorSocket(is);
 					escutarSocket.start();
@@ -68,7 +71,8 @@ public class TestKeyenceController {
 			case 4:
 				System.out.println("Parando leitura...");
 				try {
-					if(escutarSocket != null) escutarSocket.fechar();
+					if (escutarSocket != null)
+						escutarSocket.fechar();
 					keyence.pararLeitura();
 				} catch (Exception e) {
 					System.out.println("Houve um problema ao tentar parar leitura!");
@@ -96,7 +100,8 @@ public class TestKeyenceController {
 				break;
 			case 7:
 				try {
-					if(escutarSocket != null) escutarSocket.fechar();
+					if (escutarSocket != null)
+						escutarSocket.fechar();
 					keyence.pararLeitura();
 					keyence.desconectar();
 					System.exit(0);
@@ -135,23 +140,37 @@ class EscutadorSocket extends Thread {
 	InputStream stream;
 	Scanner scanner;
 	boolean aberto;
-	
+
 	public EscutadorSocket(InputStream stream) {
 		this.stream = stream;
 		aberto = true;
 	}
-	
+
 	public void fechar() {
 		this.aberto = false;
 	}
-	
+
 	@Override
 	public void run() {
 		scanner = new Scanner(this.stream);
-		
-		while(this.aberto) {
+		int count = 0;
+
+		while (this.aberto && scanner.hasNextLine()) {
 			String s = scanner.nextLine();
-			if(this.aberto) System.out.println(s);
+			if (s == null) {
+				System.out.println("erro");
+			} else {
+				System.out.println(s);
+				System.out.println();
+				System.out.println();
+				if (!s.startsWith("ERR")) {
+					count++;
+					System.out.println(s);
+					System.out.println("Quantidade: " + count);
+				}
+			}
+//			if (this.aberto)
+//				System.out.println(s);
 		}
 
 		System.out.println("Escutador finalizado!");
