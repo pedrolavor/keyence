@@ -7,12 +7,12 @@ import java.net.UnknownHostException;
 
 import br.inf.cs.keyence.Keyence;
 
-public class KeyenceController {
+public class KeyenceController2 {
 	
-	Keyence keyence = null;
+	Keyence2 keyence = null;
 	
-	public KeyenceController() {
-		this.keyence = new Keyence();
+	public KeyenceController2() {
+		this.keyence = new Keyence2();
 	}
 	
 	public void conectar() throws UnknownHostException, ConnectException, IOException {
@@ -20,7 +20,7 @@ public class KeyenceController {
 	}
 	
 	public void desconectar() throws ConnectException, IOException {
-		this.keyence.close();
+		this.keyence.disconnect();
 	}
 	
 	public InputStream iniciarLeitura(int bank) throws ConnectException, IOException {
@@ -38,38 +38,20 @@ public class KeyenceController {
 		System.out.println("AFTER LOFF!");
 	}
 	
-	public String focar() {
-		String resposta = null;
-		try {
-			resposta = this.keyence.processCommand("FTUNE");
-		} catch (Exception e) {
-			System.out.println("Erro ao tentar focar: " + e.getMessage());
-		}
-		return resposta;
+	public void focar() throws ConnectException, IOException {
+		this.keyence.send("FTUNE");
 	}
 	
-	public String tunar(int bank) {
-		String resposta = null;
-		try {
-			resposta = this.keyence.processCommand("TUNE," + (bank < 10 ? "0" : "") + bank);
-		} catch (Exception e) {
-			System.out.println("Erro ao tentar tunar: " + e.getMessage());
-		}
-		return resposta;
+	public void tunar(int bank) throws ConnectException, IOException {
+		this.keyence.send("TUNE," + (bank < 10 ? "0" : "") + bank);
 	}
 	
-	public String tunar() {
-		return tunar(1);
+	public void tunar() throws ConnectException, IOException {
+		tunar(1);
 	}
 	
-	public String pararTunagem() {
-		String resposta = null;
-		try {
-			resposta = this.keyence.processCommand("TQUIT");
-		} catch (Exception e) {
-			System.out.println("Erro ao tentar scanear: " + e.getMessage());
-		}
-		return resposta;
+	public void pararTunagem() throws ConnectException, IOException {
+		this.keyence.send("TQUIT");
 	}	
 	
 	
@@ -79,14 +61,6 @@ public class KeyenceController {
 	
 	public boolean conectado() {
 		return this.keyence.isConnected();
-	}
-	
-	public String nome() {
-		return this.keyence.getName();
-	}
-	
-	public void nome(String name) {
-		this.keyence.setName(name);
 	}
 	
 	public String host() {

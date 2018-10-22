@@ -1,14 +1,18 @@
 package br.inf.cs.keyence;
 
+import java.io.BufferedReader;
+import java.io.BufferedWriter;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.io.OutputStreamWriter;
 import java.net.ConnectException;
 import java.net.UnknownHostException;
 import java.util.Scanner;
 
 import br.inf.cs.barcode.GS1;
 
-public class TestKeyenceController {
+public class TestKeyenceController2 {
 
 	public static void main(String[] args) {
 
@@ -16,9 +20,10 @@ public class TestKeyenceController {
 		int PORT = 9004;
 		Scanner entrada = new Scanner(System.in);
 		Integer comando = 0;
-		KeyenceController keyence = new KeyenceController();
+		KeyenceController2 keyence = new KeyenceController2();
 		EscutadorSocket escutarSocket = null;
 		Scanner socketStream = null;
+		
 		keyence.host(HOST);
 		keyence.porta(PORT);
 
@@ -35,8 +40,7 @@ public class TestKeyenceController {
 					System.out.println("Scanner não encontrado ou host não existe nesta rede!");
 					System.out.println();
 				} catch (ConnectException ex) {
-					System.out.println(
-							"Falha ao tentar conectar ao scanner! Verifique se outro cliente já está conectado.");
+					System.out.println("Falha ao tentar conectar ao scanner! Verifique se outro cliente já está conectado.");
 					System.out.println();
 				} catch (IOException ix) {
 					System.out.println("Falha de leitura de conexão do scanner!");
@@ -82,7 +86,7 @@ public class TestKeyenceController {
 				break;
 			case 5:
 				try {
-					System.out.println(keyence.focar());
+					keyence.focar();
 				} catch (Exception e) {
 					System.out.println("Houve um problema ao tentar focar o scanner!");
 					e.printStackTrace();
@@ -91,7 +95,7 @@ public class TestKeyenceController {
 				break;
 			case 6:
 				try {
-					System.out.println(keyence.tunar());
+					keyence.tunar();
 				} catch (Exception e) {
 					System.out.println("Houve um problema ao tentar realizar o tuning!");
 					e.printStackTrace();
@@ -120,7 +124,7 @@ public class TestKeyenceController {
 		}
 	}
 
-	public static void menu(KeyenceController keyence) {
+	public static void menu(KeyenceController2 keyence) {
 		System.out.println("+---------------------+");
 		System.out.println("| " + (keyence.conectado() ? "Conectado :)        |" : "Desconectado :(     |"));
 		System.out.println("+---------------------+");
@@ -136,12 +140,12 @@ public class TestKeyenceController {
 	}
 }
 
-class EscutadorSocket extends Thread {
+class EscutadorKeyence extends Thread {
 	InputStream stream;
 	Scanner scanner;
 	boolean aberto;
 
-	public EscutadorSocket(InputStream stream) {
+	public EscutadorKeyence(InputStream stream) {
 		this.stream = stream;
 		aberto = true;
 	}
@@ -149,38 +153,21 @@ class EscutadorSocket extends Thread {
 	public void fechar() {
 		this.aberto = false;
 	}
-	
-//	public String parse(int i, String s) {
-//		GS1 gs1 = new GS1();
-//		String ean = gs1.getGTIN();
-//		String validade = gs1.getExpirationDate();
-//		String lote = gs1.getLot();
-//		
-//		StringBuilder sb = new StringBuilder("");
-//		sb.append(" \"ean\":").append( "\""+ ean +"\",");
-//		sb.append(" \"validade\":").append( "\""+ validade +"\",");
-//		sb.append(" \"lote\":").append( "\""+ lote +"\",");
-//		
-//		return sb;
-//	}
 
 	@Override
 	public void run() {
-		scanner = new Scanner(this.stream);
-		int count = 0;
-
-		do {
-			String s = scanner.nextLine();
-			if (s != null) {
-//				System.out.println("Quantidade: " + count);
-				// if (!s.startsWith("ERR")) {
-				count++;
-				
-				System.out.println(s);
-				System.out.println("Quantidade: " + count);
-				// }
-			}
-		} while (this.aberto);
+	    BufferedReader in = new BufferedReader(new InputStreamReader(stream));
+//	    BufferedWriter arquivo = new BufferedWriter(out);
+	    String fromKeyence;
+	    
+	    try {
+		    while((fromKeyence = in.readLine()) != null) {
+		    	System.out.println(fromKeyence);
+		    }
+	    } catch (Exception e) {
+			// TODO: handle exception
+	    	e.printStackTrace();
+		}
 
 		System.out.println("Escutador finalizado!");
 	}
