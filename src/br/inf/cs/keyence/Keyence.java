@@ -112,8 +112,8 @@ public class Keyence {
 			socketChannel.configureBlocking(true);
 			
 			// enviar comando
-			this.socketChannel.write(encoder.encode(CharBuffer.wrap(command)));
 			this.bb.clear();
+			this.socketChannel.write(encoder.encode(CharBuffer.wrap(command)));
 		}
 	}
 
