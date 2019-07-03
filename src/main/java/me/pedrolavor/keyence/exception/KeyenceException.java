@@ -1,4 +1,4 @@
-package me.pedrolavor.keyence;
+package me.pedrolavor.keyence.exception;
 
 public class KeyenceException extends Exception {
 	

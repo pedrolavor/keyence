@@ -1,23 +1,16 @@
 package me.pedrolavor.keyence;
 
-import java.io.BufferedInputStream;
 import java.io.BufferedReader;
 import java.io.IOException;
-import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.PrintStream;
-import java.net.InetSocketAddress;
 import java.net.Socket;
-import java.net.SocketTimeoutException;
-import java.net.UnknownHostException;
-import java.nio.ByteBuffer;
-import java.nio.CharBuffer;
-import java.nio.channels.SocketChannel;
-import java.nio.charset.Charset;
-import java.nio.charset.CharsetEncoder;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import me.pedrolavor.keyence.exception.KeyenceConnectionException;
+import me.pedrolavor.keyence.exception.KeyenceException;
 
 /**
  * Provides Ethernet communications a Keyence Camera Controller
@@ -30,19 +23,11 @@ public class Keyence {
 	private static int count = 0;
 	
 	private String name;
-	private String stdName = "KEYENCE-SR-1000";
 	private String host = "localhost";
 	private int port = 9004;
-	private int socketTimeout = 5000;
-	private boolean connected = false;
 
-	private Socket socket;
-	private PrintStream socketPrinter;
-	private SocketChannel socketChannel;
-    private static Charset charset = Charset.forName("US-ASCII");
-    private static CharsetEncoder encoder = charset.newEncoder();
-	private final Object socketAccessLock = new Object();
-	private ByteBuffer bb = ByteBuffer.allocate(4096);
+	private Socket socket = null;
+	private PrintStream socketWriter = null;
 	
 	public Keyence() {
 		setStandartName();
@@ -59,107 +44,74 @@ public class Keyence {
 		setStandartName();
 	}
 	
-	public void connect() throws KeyenceException {
+	public void connect() throws KeyenceConnectionException {
 		logger.info("Connecting to " + host + ":" + port + " (" + name + ")");
-		try {
-			if (!connected){
+		if (!isConnected()){
+			try {
 				socket = new Socket(host, port);
-				connected = true;
+				socketWriter = new PrintStream(socket.getOutputStream());
 				logger.info("Successfully connected!");
-				cleanPipe();
+			} catch (Exception e) {
+				logger.error("Error connecting to " + host + ":" + port);
+				throw new KeyenceConnectionException(e.getCause().getMessage());
 			}
-		} catch (UnknownHostException ex) {
-			logger.error("Host not found.");
-			throw new KeyenceException("Host not found.");
-		} catch (IOException ix) {
-			logger.error("Error on connect.");
-			throw new KeyenceException("Error on connect.");
+		} else {
+			logger.info("Connection to " + host + ":" + port + " (" + name + ") already existent.");
 		}
 	}
 
-	public void close() throws KeyenceException {
+	public void disconnect() throws KeyenceConnectionException {
 		logger.info("Disconnecting from " + host + ":" + port + " (" + name + ")");
-		connected = false;
-		if (socketChannel != null) {
-			try {
-				socketChannel.close();
-				socketChannel = null;
-			} catch (IOException ex) {
-				logger.error("Error on closing connection.");
-				throw new KeyenceException(ex.getMessage());
-			}
+		try {
+			socketWriter.close();
+			socket.close();
+			socketWriter = null;
+			socket = null;
+		} catch (Exception e) {
+			logger.info("Disconnecting from " + host + ":" + port + " (" + name + ")");
+			throw new KeyenceConnectionException(e.getCause().getMessage());
 		}
 	}
 	
 	public void execute(String command) throws KeyenceException {
-		String cmd = command + '\r';
-		logger.debug("Sending command: " + cmd);
-		System.out.println("Sending command: " + cmd);
-			
+		logger.debug("Sending command: " + command);
+		System.out.println("Sending command: " + command);
+		
 		if (!isConnected()) {
 			logger.debug("Scanner not connected.");
 			throw new KeyenceException("Not connected.");
 		}
-		
-		try{
-			this.cleanPipe();
-			this.socketChannel.write(encoder.encode(CharBuffer.wrap(cmd)));
-			this.bb.clear();	
-		} catch (SocketTimeoutException ex) {
-			throw new KeyenceException("Command read timeout: " + cmd);
-		} catch (IOException ex) {
-			throw new KeyenceException("Error sending command: " + cmd);
-		}
+
+		socketWriter.flush();
+		socketWriter.println(command + '\r');
+		socketWriter.flush();
 	}
 	
 	public void execute(KeyenceCommand keyenceCommand) throws KeyenceException {
 		execute(keyenceCommand.getCommand());
 	}
 	
-	public InputStream listen() throws KeyenceException {
-		InputStream buffer = null;
-		
+	public BufferedReader listen() throws KeyenceException {
+		BufferedReader buff = null;
 		if (!isConnected()) {
 			logger.debug("Scanner not connected.");
 			throw new KeyenceException("Not connected!");
 		}
-		
 		try {
-			buffer = socketChannel.socket().getInputStream();
+			buff = new BufferedReader(new InputStreamReader(socket.getInputStream()));
 		} catch (IOException e) {
-			throw new KeyenceException("Error listen to scanner.");
+			e.printStackTrace();
+			throw new KeyenceException("Error on getting socket stream.");
 		}
-		
-		return buffer;
-	}
-	
-	private void cleanPipe() throws IOException {
-		synchronized (socketAccessLock) {
-			if(connected){
-				try{
-					socketChannel.configureBlocking(false);
-					while (socketChannel.read(bb) > 0) {
-						bb.clear();
-					}
-					socketChannel.configureBlocking(true);
-				} catch (IOException ex) {
-					try {
-						close();
-					} catch (Exception e) {
-						// we know that already
-					}
-					throw ex;
-				}
-			}
-		}
+		return buff;
 	}
 	
 	private void setStandartName() {
-		name = stdName + "-" + count++;
+		name = "KEYENCE-SR-1000-" + count++;
 	}
 	
 	public boolean isConnected() {
-		return connected;
+		return socket != null && !socket.isClosed();
 	}
 	
 	public String getHost() {
@@ -176,14 +128,6 @@ public class Keyence {
 	
 	public void setPort(int port) {
 		this.port = port;
-	}
-	
-	public int getSocketTimeout() {
-		return socketTimeout;
-	}
-	
-	public void setSocketTimeout(int timeout) {
-		this.socketTimeout = timeout;
 	}
 	
 	public String getName() {
