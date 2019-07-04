@@ -6,24 +6,28 @@ import java.io.InputStreamReader;
 public class KeyenceListener extends Thread {
 	
 	private Keyence keyence;
+	private KeyenceEventListener eventListener;
 	private boolean stopped = false;
 	
-	public KeyenceListener(Keyence keyence) {
+	public KeyenceListener(Keyence keyence, KeyenceEventListener eventListener) {
 		this.keyence = keyence;
+		this.eventListener = eventListener;
 	}
 
 	@Override
 	public void run() {
+		eventListener.onStart();
 		try {
 			BufferedReader reader = new BufferedReader(new InputStreamReader(keyence.listen()));
 			while(!stopped) {
 				if(!stopped && reader.ready()) {
 					String response = reader.readLine();
-					System.out.println(response);
+					eventListener.onRead(response);
 				}
 			}
 		} catch (Exception e) {
 			e.printStackTrace();
+			eventListener.onError(e);
 		}
 	}
 	
@@ -32,5 +36,6 @@ public class KeyenceListener extends Thread {
 		stopped = true;
 		this.stop();
 		this.interrupt();
+		eventListener.onClose();
 	}
 }
