@@ -1,8 +1,7 @@
 package me.pedrolavor.keyence;
 
-import java.io.BufferedReader;
 import java.io.IOException;
-import java.io.InputStreamReader;
+import java.io.InputStream;
 import java.io.PrintStream;
 import java.net.Socket;
 
@@ -22,12 +21,12 @@ public class Keyence {
 	private static final Logger logger = LoggerFactory.getLogger(Keyence.class);
 	private static int count = 0;
 	
+	private Socket socket;
+	private PrintStream socketWriter = null;
+	
 	private String name;
 	private String host = "localhost";
 	private int port = 9004;
-
-	private Socket socket = null;
-	private PrintStream socketWriter = null;
 	
 	public Keyence() {
 		setStandartName();
@@ -45,35 +44,39 @@ public class Keyence {
 	}
 	
 	public void connect() throws KeyenceConnectionException {
-		logger.info("Connecting to " + host + ":" + port + " (" + name + ")");
 		if (!isConnected()){
 			try {
 				socket = new Socket(host, port);
 				socketWriter = new PrintStream(socket.getOutputStream());
-				logger.info("Successfully connected!");
 			} catch (Exception e) {
 				logger.error("Error connecting to " + host + ":" + port);
 				throw new KeyenceConnectionException(e.getCause().getMessage());
 			}
 		} else {
-			logger.info("Connection to " + host + ":" + port + " (" + name + ") already existent.");
+			logger.info("Connection to " + host + ":" + port + " (" + name + ") existent.");
 		}
 	}
 
 	public void disconnect() throws KeyenceConnectionException {
 		logger.info("Disconnecting from " + host + ":" + port + " (" + name + ")");
 		try {
-			socketWriter.close();
+			
+			// disconnection does not wait outputstream finish
+			// so, this is a workaround to wait
+			Thread.sleep(100);
+			
+			if(socketWriter != null) {
+				socketWriter.close();
+			}
 			socket.close();
-			socketWriter = null;
-			socket = null;
 		} catch (Exception e) {
+			e.printStackTrace();
 			logger.info("Disconnecting from " + host + ":" + port + " (" + name + ")");
 			throw new KeyenceConnectionException(e.getCause().getMessage());
 		}
 	}
 	
-	public void execute(String command) throws KeyenceException {
+	public boolean execute(String command) throws Exception {
 		logger.debug("Sending command: " + command);
 		System.out.println("Sending command: " + command);
 		
@@ -82,28 +85,27 @@ public class Keyence {
 			throw new KeyenceException("Not connected.");
 		}
 
-		socketWriter.flush();
 		socketWriter.println(command + '\r');
-		socketWriter.flush();
+		return socketWriter.checkError();
 	}
 	
-	public void execute(KeyenceCommand keyenceCommand) throws KeyenceException {
-		execute(keyenceCommand.getCommand());
+	public boolean execute(KeyenceCommand keyenceCommand) throws Exception {
+		return execute(keyenceCommand.getCommand());
 	}
 	
-	public BufferedReader listen() throws KeyenceException {
-		BufferedReader buff = null;
+	public InputStream listen() throws KeyenceException {
+		InputStream stream = null;
 		if (!isConnected()) {
 			logger.debug("Scanner not connected.");
 			throw new KeyenceException("Not connected!");
 		}
 		try {
-			buff = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+			stream = socket.getInputStream();
 		} catch (IOException e) {
 			e.printStackTrace();
 			throw new KeyenceException("Error on getting socket stream.");
 		}
-		return buff;
+		return stream;
 	}
 	
 	private void setStandartName() {
