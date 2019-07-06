@@ -13,14 +13,22 @@ public class KeyenceAppTest {
 		keyence.connect();
 		System.out.println("Connected: " + keyence.isConnected());
 		
-		KeyenceListener listener = new KeyenceListener(keyence);
-		listener.start();
+		keyence.startListener(new KeyenceEventListener() {			
+			@Override
+			public void onStart() {}
+			@Override
+			public void onRead(Object object) {System.out.println(object.toString());}
+			@Override
+			public void onError(Object object) {}
+			@Override
+			public void onClose() {}
+		});
 
 		keyence.execute(KeyenceCommand.SCAN);
 		
 		Thread.sleep(5000);
 		keyence.execute(KeyenceCommand.END_SCAN);
-		listener.close();
+		keyence.stopListener();
 		keyence.disconnect();
 	}
 }

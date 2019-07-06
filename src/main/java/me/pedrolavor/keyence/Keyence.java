@@ -23,6 +23,7 @@ public class Keyence {
 	
 	private Socket socket;
 	private PrintStream socketWriter = null;
+	private KeyenceThread thread = null;
 	
 	private String name;
 	private String host = "localhost";
@@ -69,6 +70,7 @@ public class Keyence {
 				socketWriter.close();
 			}
 			socket.close();
+			
 		} catch (Exception e) {
 			e.printStackTrace();
 			logger.info("Disconnecting from " + host + ":" + port + " (" + name + ")");
@@ -76,20 +78,20 @@ public class Keyence {
 		}
 	}
 	
-	public boolean execute(String command) throws Exception {
+	public boolean execute(String command) throws KeyenceConnectionException {
 		logger.debug("Sending command: " + command);
 		System.out.println("Sending command: " + command);
 		
 		if (!isConnected()) {
 			logger.debug("Scanner not connected.");
-			throw new KeyenceException("Not connected.");
+			throw new KeyenceConnectionException("Not connected.");
 		}
 
 		socketWriter.println(command + '\r');
 		return socketWriter.checkError();
 	}
 	
-	public boolean execute(KeyenceCommand keyenceCommand) throws Exception {
+	public boolean execute(KeyenceCommand keyenceCommand) throws KeyenceConnectionException {
 		return execute(keyenceCommand.getCommand());
 	}
 	
@@ -106,6 +108,16 @@ public class Keyence {
 			throw new KeyenceException("Error on getting socket stream.");
 		}
 		return stream;
+	}
+	
+	public void startListener(KeyenceEventListener listener) {
+		thread = new KeyenceThread(this, listener);
+		thread.start();
+	}
+	
+	public void stopListener() {
+		thread.close();
+		thread = null;
 	}
 	
 	private void setStandartName() {

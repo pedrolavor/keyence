@@ -3,13 +3,13 @@ package me.pedrolavor.keyence;
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
 
-public class KeyenceListener extends Thread {
+public class KeyenceThread extends Thread {
 	
 	private Keyence keyence;
 	private KeyenceEventListener eventListener;
 	private boolean stopped = false;
 	
-	public KeyenceListener(Keyence keyence, KeyenceEventListener eventListener) {
+	public KeyenceThread(Keyence keyence, KeyenceEventListener eventListener) {
 		this.keyence = keyence;
 		this.eventListener = eventListener;
 	}
